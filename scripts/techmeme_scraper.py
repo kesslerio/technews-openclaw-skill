@@ -4,7 +4,7 @@ TechMeme Scraper - Fetches top stories from techmeme.com
 """
 
 import json
-import re
+import time
 from pathlib import Path
 from typing import List, Dict, Optional
 import requests
@@ -69,7 +69,7 @@ def save_cache(stories: List[Dict]):
     cache_dir = CACHE_FILE.parent
     cache_dir.mkdir(parents=True, exist_ok=True)
     with open(CACHE_FILE, "w") as f:
-        json.dump({"cached_at": __import__("time").time(), "stories": stories}, f, indent=2)
+        json.dump({"cached_at": time.time(), "stories": stories}, f, indent=2)
 
 
 def load_cache(max_age_hours: int = 2) -> Optional[List[Dict]]:
@@ -80,7 +80,7 @@ def load_cache(max_age_hours: int = 2) -> Optional[List[Dict]]:
     with open(CACHE_FILE) as f:
         data = json.load(f)
     
-    age = (__import__("time").time() - data.get("cached_at", 0)) / 3600
+    age = (time.time() - data.get("cached_at", 0)) / 3600
     if age < max_age_hours:
         return data.get("stories", [])
     

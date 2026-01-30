@@ -5,6 +5,7 @@ Social Reactions - Finds and highlights social media reactions to articles
 
 import json
 import re
+from urllib.parse import quote
 from typing import List, Dict, Optional
 import requests
 
@@ -22,7 +23,7 @@ def find_twitter_reactions(article_title: str, article_url: str, max_results: in
     try:
         # Try to search for the article title on Twitter
         query = f'"{article_title[:50]}"' if len(article_title) > 50 else f'"{article_title}"'
-        search_url = f"{TWITTER_SEARCH}?q={requests.utils.quote(query)}&f=live"
+        search_url = f"{TWITTER_SEARCH}?q={quote(query)}&f=live"
         
         headers = {
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"

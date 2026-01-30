@@ -26,10 +26,11 @@ def format_output(stories: List[Dict]) -> str:
     
     for i, story in enumerate(stories, 1):
         output.append(f"**{i}. {story['title']}**")
-        output.append(f"   🔗 {story['url']}")
+        # Use markdown inline link for Telegram
+        output.append(f"🔗 [{story['url']}]({story['url']})")
         
         if story.get("summary"):
-            output.append(f"   📝 {story['summary'][:200]}...")
+            output.append(f"📝 {story['summary'][:200]}...")
         
         # Show reactions if available
         if story.get("reactions"):
@@ -37,10 +38,13 @@ def format_output(stories: List[Dict]) -> str:
             
             if reactions.get("hacker_news"):
                 hn = reactions["hacker_news"]
-                output.append(f"   💬 HN: {hn.get('points', 0)} points, {hn.get('comment_count', 0)} comments")
+                hn_url = hn.get("hn_url", "")
+                points = hn.get("points", 0)
+                comments = hn.get("comment_count", 0)
+                output.append(f"💬 [HN: {points}pts, {comments} comments]({hn_url})")
             
             if reactions.get("spicy_quotes"):
-                output.append(f"   🔥 Notable quote: \"{reactions['spicy_quotes'][0][:100]}...\"")
+                output.append(f"🔥 \"{reactions['spicy_quotes'][0][:100]}...\"")
         
         output.append("")
     
@@ -49,30 +53,36 @@ def format_output(stories: List[Dict]) -> str:
 
 def run_technews(num_stories: int = 10) -> str:
     """Main technews workflow."""
-    # Step 1: Fetch from TechMeme
-    print("Fetching TechMeme stories...")
-    stories = fetch_techmeme(num_stories)
-    
-    if not stories:
-        return "❌ Could not fetch stories from TechMeme"
-    
-    # Step 2: Fetch article content
-    print(f"Fetching {len(stories)} articles...")
-    urls = [s["url"] for s in stories]
-    articles = fetch_multiple(urls)
-    
-    # Step 3: Merge content into stories
-    for story, article in zip(stories, articles):
-        if article.get("success"):
-            story["content"] = article.get("content", "")
-            story["summary"] = article.get("summary", "")
-    
-    # Step 4: Analyze reactions
-    print("Analyzing social reactions...")
-    analyzed = analyze_reactions(stories)
-    
-    # Step 5: Format output
-    return format_output(analyzed)
+    try:
+        # Step 1: Fetch from TechMeme
+        print("Fetching TechMeme stories...")
+        stories = fetch_techmeme(num_stories)
+        
+        if not stories:
+            return "❌ Could not fetch stories from TechMeme"
+        
+        # Step 2: Fetch article content
+        print(f"Fetching {len(stories)} articles...")
+        urls = [s["url"] for s in stories]
+        articles = fetch_multiple(urls)
+        
+        # Step 3: Merge content into stories
+        for story, article in zip(stories, articles):
+            if article.get("success"):
+                story["content"] = article.get("content", "")
+                story["summary"] = article.get("summary", "")
+        
+        # Step 4: Analyze reactions
+        print("Analyzing social reactions...")
+        analyzed = analyze_reactions(stories)
+        
+        # Step 5: Format output
+        return format_output(analyzed)
+        
+    except requests.exceptions.RequestException as e:
+        return f"❌ Network error: {str(e)}"
+    except Exception as e:
+        return f"❌ Unexpected error: {str(e)}"
 
 
 def main():
