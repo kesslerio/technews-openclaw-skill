@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-TechMeme Scraper - Fetches top stories from techmeme.com
+TechMeme Scraper - Fetches top stories from techmeme.com via RSS
 """
 
 import json
@@ -8,60 +8,101 @@ import time
 from pathlib import Path
 from typing import List, Dict, Optional
 import requests
-from bs4 import BeautifulSoup
+import xml.etree.ElementTree as ET
 
-TECHMEME_URL = "https://www.techmeme.com"
+TECHMEME_RSS = "https://www.techmeme.com/feed.xml"
 CACHE_FILE = Path.home() / ".cache/technews/stories.json"
 
 
-def fetch_techmeme(num_stories: int = 10) -> List[Dict]:
-    """Fetch top stories from TechMeme homepage."""
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
-    }
-    
-    response = requests.get(TECHMEME_URL, headers=headers, timeout=30)
-    response.raise_for_status()
-    
-    soup = BeautifulSoup(response.text, "html.parser")
+def parse_rss(xml_content: str, num_stories: int = 10) -> List[Dict]:
+    """Parse TechMeme RSS feed and extract stories."""
     stories = []
     
-    # TechMeme uses div.story with data attributes for top stories
-    story_elements = soup.select("div.story")
-    
-    for elem in story_elements[:num_stories]:
-        try:
-            # Get title from the link
-            title_elem = elem.select_one("a.ourh")
-            if not title_elem:
-                continue
+    try:
+        root = ET.fromstring(xml_content)
+        
+        for item in root.findall(".//item")[:num_stories]:
+            title_elem = item.find("title")
+            link_elem = item.find("link")
+            desc_elem = item.find("description")
+            pubdate_elem = item.find("pubDate")
             
-            title = title_elem.get_text(strip=True)
-            link = title_elem.get("href", "")
+            title = title_elem.text if title_elem is not None else ""
+            link = link_elem.text if link_elem is not None else ""
             
-            # Make absolute URL
-            if link.startswith("/"):
-                link = TECHMEME_URL + link
+            # Extract summary from description (strip HTML)
+            description = ""
+            if desc_elem is not None and desc_elem.text:
+                # Simple HTML strip - remove tags
+                desc_text = desc_elem.text
+                import re
+                desc_text = re.sub(r'<[^>]+>', ' ', desc_text)
+                description = ' '.join(desc_text.split())[:300]
             
-            # Get summary/description if available
-            summary_elem = elem.select_one("div.intr")
-            summary = summary_elem.get_text(strip=True) if summary_elem else ""
-            
-            # Get timestamp if available
-            time_elem = elem.select_one("span.dt")
-            timestamp = time_elem.get_text(strip=True) if time_elem else ""
+            pubdate = pubdate_elem.text if pubdate_elem is not None else ""
             
             stories.append({
                 "title": title,
                 "url": link,
-                "summary": summary,
-                "timestamp": timestamp,
+                "summary": description,
+                "timestamp": pubdate,
                 "source": "techmeme"
             })
-        except Exception as e:
-            continue
+            
+    except ET.ParseError as e:
+        # Fallback: try regex parsing
+        stories = parse_rss_fallback(xml_content, num_stories)
     
     return stories
+
+
+def parse_rss_fallback(xml_content: str, num_stories: int = 10) -> List[Dict]:
+    """Fallback RSS parser using regex."""
+    import re
+    stories = []
+    
+    # Match items
+    item_pattern = r'<item>(.*?)</item>'
+    items = re.findall(item_pattern, xml_content, re.DOTALL)[:num_stories]
+    
+    for item in items:
+        title_match = re.search(r'<title>(.*?)</title>', item, re.DOTALL)
+        link_match = re.search(r'<link>(.*?)</link>', item)
+        desc_match = re.search(r'<description>(.*?)</description>', item, re.DOTALL)
+        date_match = re.search(r'<pubDate>(.*?)</pubDate>', item)
+        
+        title = title_match.group(1) if title_match else ""
+        link = link_match.group(1) if link_match else ""
+        
+        description = ""
+        if desc_match:
+            desc_text = re.sub(r'<[^>]+>', ' ', desc_match.group(1))
+            description = ' '.join(desc_text.split())[:300]
+        
+        pubdate = date_match.group(1) if date_match else ""
+        
+        stories.append({
+            "title": title,
+            "url": link,
+            "summary": description,
+            "timestamp": pubdate,
+            "source": "techmeme"
+        })
+    
+    return stories
+
+
+def fetch_techmeme(num_stories: int = 10) -> List[Dict]:
+    """Fetch top stories from TechMeme RSS feed."""
+    headers = {
+        "User-Agent": "Mozilla/5.0 (compatible; TechNewsBot/1.0)",
+        "Accept": "application/rss+xml, application/xml, text/xml, */*",
+    }
+    
+    response = requests.get(TECHMEME_RSS, headers=headers, timeout=30)
+    response.raise_for_status()
+    
+    return parse_rss(response.text, num_stories)
 
 
 def save_cache(stories: List[Dict]):
@@ -77,12 +118,15 @@ def load_cache(max_age_hours: int = 2) -> Optional[List[Dict]]:
     if not CACHE_FILE.exists():
         return None
     
-    with open(CACHE_FILE) as f:
-        data = json.load(f)
-    
-    age = (time.time() - data.get("cached_at", 0)) / 3600
-    if age < max_age_hours:
-        return data.get("stories", [])
+    try:
+        with open(CACHE_FILE) as f:
+            data = json.load(f)
+        
+        age = (time.time() - data.get("cached_at", 0)) / 3600
+        if age < max_age_hours:
+            return data.get("stories", [])
+    except (json.JSONDecodeError, OSError):
+        pass
     
     return None
 
