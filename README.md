@@ -1,6 +1,6 @@
-# TechNews Skill for Moltbot
+# TechNews Skill for OpenClaw
 
-A Moltbot skill that fetches top tech stories from TechMeme, summarizes linked articles, and highlights social media reactions.
+A OpenClaw skill that fetches top tech stories from TechMeme, summarizes linked articles, and highlights social media reactions.
 
 ## Features
 
@@ -13,8 +13,8 @@ A Moltbot skill that fetches top tech stories from TechMeme, summarizes linked a
 ## Installation
 
 ```bash
-# Clone or add to your Moltbot skills
-cd /path/to/moltbot/skills
+# Clone or add to your OpenClaw skills
+cd /path/to/openclaw/skills
 git clone https://github.com/yourusername/technews-skill.git
 
 # Install dependencies
@@ -23,7 +23,7 @@ pip install requests beautifulsoup4
 
 ## Usage
 
-In Moltbot, simply type:
+In OpenClaw, simply type:
 
 ```
 /technews
@@ -39,7 +39,7 @@ This will fetch the top 10 stories and present them with:
 
 ```
 technews/
-├── SKILL.md              # Moltbot skill definition
+├── SKILL.md              # OpenClaw skill definition
 ├── README.md            # This file
 ├── scripts/
 │   ├── techmeme_scraper.py    # Fetches stories from TechMeme
@@ -64,7 +64,7 @@ Add new sources by creating additional scraper modules and updating the orchestr
 - Python 3.9+
 - `requests`
 - `beautifulsoup4`
-- Moltbot (any recent version)
+- OpenClaw (any recent version)
 
 ## License
 
