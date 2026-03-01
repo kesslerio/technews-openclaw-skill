@@ -6,6 +6,7 @@ TechNews Orchestrator - Main entry point for the technews skill
 import json
 import sys
 from pathlib import Path
+from typing import List, Dict
 
 # Add scripts to path
 SCRIPT_DIR = Path(__file__).parent
