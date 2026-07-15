@@ -7,7 +7,7 @@ import contextlib
 import io
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 import requests
 
